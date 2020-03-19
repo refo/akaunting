@@ -1,0 +1,52 @@
+version: "3.7"
+services:
+  db:
+    image: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    # volumes:
+    #   - ./db:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: akaunting
+      MYSQL_USER: akaunting
+      MYSQL_PASSWORD: akaunting
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    networks:
+      - default
+
+  php:
+    image: php:fpm
+    build:
+      context: .
+      dockerfile: Dockerfile-php
+    # image: php:akaunting
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+    command: bash -c 'composer install && php artisan install --db-host="db" --db-name="akaunting" --db-username="akaunting" --db-password="akaunting" --admin-email="admin@foo.bar" --admin-password="admin" && php-fpm'
+    depends_on:
+      - db
+    networks:
+      - default
+
+  nginx:
+    image: nginx
+    volumes:
+      - .:/var/www/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - 80:80
+    depends_on:
+      - php
+    networks:
+      - default
+
+  node:
+    image: node
+    working_dir: /web
+    volumes:
+      - .:/web
+    command: bash -c "npm install && npm run dev"
+
+networks:
+  default:
